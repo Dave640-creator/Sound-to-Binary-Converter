@@ -32,7 +32,7 @@
   .facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin-bottom:22px; }
   .fact { background:#101a30; border-radius:8px; padding:12px; border-left:4px solid var(--wave); }
   .fact strong { display:block; font-size:1.25rem; color:var(--wave); }
-  canvas { width:100%; height:260px; display:block; background:#0c1222; border-radius:10px; border:1px solid var(--line); }
+  canvas { width:100%; height:320px; display:block; background:#0c1222; border-radius:10px; border:1px solid var(--line); }
   .legend { color:var(--mute); font-size:.9rem; margin:8px 0 22px; }
   .table-wrap { overflow-x:auto; margin-bottom:22px; }
   table { width:100%; border-collapse:collapse; font-size:.95rem; }
@@ -154,30 +154,53 @@
     const w = c.clientWidth, h = c.clientHeight;
     c.width = w * dpr; c.height = h * dpr;
     const g = c.getContext('2d'); g.scale(dpr, dpr);
-    const padX = 28, padY = 24, n = result.rows.length;
-    const X = t => padX + t * (w - 2 * padX);
-    const Y = v => padY + (1 - (v + 1) / 2) * (h - 2 * padY);
-    g.strokeStyle = '#2d3a5c'; g.lineWidth = 1;
-    for (const v of [-1, 0, 1]) { g.beginPath(); g.moveTo(padX, Y(v)); g.lineTo(w - padX, Y(v)); g.stroke(); }
-    g.fillStyle = '#aab6d6'; g.font = '12px sans-serif';
-    g.fillText('+1', 4, Y(1) + 4); g.fillText('0', 10, Y(0) + 4); g.fillText('-1', 6, Y(-1) + 4);
-    // staircase: each sample's rounded level held until the next sample
-    g.strokeStyle = '#6ee7c8'; g.lineWidth = 2; g.beginPath();
-    result.rows.forEach((r, i) => {
-      const q = r.level / (result.levels - 1) * 2 - 1;
-      g.lineTo(X(i / n), Y(q)); g.lineTo(X((i + 1) / n), Y(q));
-    });
-    g.stroke();
-    // smooth wave
-    g.strokeStyle = '#ffb454'; g.lineWidth = 2.5; g.beginPath();
-    for (let k = 0; k <= 200; k++) {
-      const t = k / 200, y = Y(amplitude * Math.sin(2 * Math.PI * t));
-      k ? g.lineTo(X(t), y) : g.moveTo(X(t), y);
+    const padL = 38, padR = 22, padT = 36, padB = 36, n = result.rows.length, L = result.levels;
+    const X = t => padL + t * (w - padL - padR);
+    const Y = v => padT + (1 - (v + 1) / 2) * (h - padT - padB);
+    const qv = lv => lv / (L - 1) * 2 - 1;
+    g.font = '12px "Trebuchet MS", sans-serif';
+    // faint line for every possible level (only when there are few enough to read)
+    if (L <= 16) {
+      g.strokeStyle = 'rgba(170,182,214,.14)'; g.lineWidth = 1; g.setLineDash([3, 5]);
+      for (let k = 0; k < L; k++) { g.beginPath(); g.moveTo(padL, Y(qv(k))); g.lineTo(w - padR, Y(qv(k))); g.stroke(); }
+      g.setLineDash([]); g.fillStyle = '#7f8db3'; g.textAlign = 'right';
+      for (let k = 0; k < L; k++) g.fillText(k, padL - 8, Y(qv(k)) + 4);
     }
+    // zero line and time axis
+    g.strokeStyle = 'rgba(238,242,255,.35)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(padL, Y(0)); g.lineTo(w - padR, Y(0)); g.stroke();
+    g.fillStyle = '#aab6d6'; g.textAlign = 'left'; g.fillText('0 ms', padL, h - 12);
+    g.textAlign = 'right'; g.fillText(result.periodMs.toFixed(2) + ' ms (one full wave)', w - padR, h - 12);
+    // soft fill between the wave and the zero line
+    const grad = g.createLinearGradient(0, padT, 0, h - padB);
+    grad.addColorStop(0, 'rgba(255,180,84,.28)'); grad.addColorStop(.5, 'rgba(255,180,84,0)'); grad.addColorStop(1, 'rgba(255,180,84,.28)');
+    g.fillStyle = grad; g.beginPath(); g.moveTo(X(0), Y(0));
+    for (let k = 0; k <= 200; k++) g.lineTo(X(k / 200), Y(amplitude * Math.sin(2 * Math.PI * k / 200)));
+    g.lineTo(X(1), Y(0)); g.closePath(); g.fill();
+    // staircase of rounded levels
+    g.strokeStyle = '#6ee7c8'; g.lineWidth = 2.5; g.lineJoin = 'round'; g.beginPath();
+    result.rows.forEach((r, i) => { g.lineTo(X(i / n), Y(qv(r.level))); g.lineTo(X((i + 1) / n), Y(qv(r.level))); });
     g.stroke();
-    // sample dots
-    g.fillStyle = '#fff';
-    result.rows.forEach((r, i) => { g.beginPath(); g.arc(X(i / n), Y(r.height), 4.5, 0, 7); g.fill(); });
+    // real wave with a soft glow
+    g.save(); g.shadowColor = 'rgba(255,180,84,.7)'; g.shadowBlur = 10;
+    g.strokeStyle = '#ffb454'; g.lineWidth = 3; g.beginPath();
+    for (let k = 0; k <= 200; k++) { const t = k / 200, y = Y(amplitude * Math.sin(2 * Math.PI * t)); k ? g.lineTo(X(t), y) : g.moveTo(X(t), y); }
+    g.stroke(); g.restore();
+    // samples: dashed drop to the rounded level, dot, and binary label
+    g.textAlign = 'center';
+    result.rows.forEach((r, i) => {
+      const x = X(i / n), y = Y(r.height), yq = Y(qv(r.level));
+      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.2; g.setLineDash([4, 4]);
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, yq); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#6ee7c8'; g.beginPath(); g.arc(x, yq, 3.5, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.strokeStyle = '#ffb454'; g.lineWidth = 2.5;
+      g.beginPath(); g.arc(x, y, 5.5, 0, 7); g.fill(); g.stroke();
+      if (n <= 16) {
+        g.fillStyle = chipColor(r.level, L); g.font = 'bold 12px Consolas, monospace';
+        g.fillText(r.binary, Math.min(Math.max(x, padL + 14), w - padR - 14), y >= Y(0) - 1 ? y - 12 : y + 20);
+        g.font = '12px "Trebuchet MS", sans-serif';
+      }
+    });
   }
 
   function chipColor(level, levels) { return `hsl(${Math.round(level / Math.max(levels - 1, 1) * 280 + 160) % 360} 80% 72%)`; }
@@ -217,7 +240,7 @@
     }
     $('binaryResult').textContent = result.binary;
     $('totalBits').textContent = result.totalBits;
-    $('legend').textContent = `Orange = the real wave • white dots = ${n} samples • green steps = levels rounded to ${result.levels} possible values (${b} bits).`;
+    $('legend').textContent = `Orange = the real wave • white dots = the ${n} samples • green steps = each sample rounded to one of ${result.levels} levels (${b} bits). Labels show each sample's binary.`;
     $('output').hidden = false;
     drawGraph(result, a);
     $('status').textContent = `Converted ${n} samples into ${result.totalBits} bits.`;
