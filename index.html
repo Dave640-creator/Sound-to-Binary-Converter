@@ -154,7 +154,7 @@
     const w = c.clientWidth, h = c.clientHeight;
     c.width = w * dpr; c.height = h * dpr;
     const g = c.getContext('2d'); g.scale(dpr, dpr);
-    const padL = 38, padR = 22, padT = 36, padB = 36, n = result.rows.length, L = result.levels;
+    const padL = 38, padR = 22, padT = 44, padB = 44, n = result.rows.length, L = result.levels;
     const X = t => padL + t * (w - padL - padR);
     const Y = v => padT + (1 - (v + 1) / 2) * (h - padT - padB);
     const qv = lv => lv / (L - 1) * 2 - 1;
@@ -169,7 +169,7 @@
     // zero line and time axis
     g.strokeStyle = 'rgba(238,242,255,.35)'; g.lineWidth = 1.2;
     g.beginPath(); g.moveTo(padL, Y(0)); g.lineTo(w - padR, Y(0)); g.stroke();
-    g.fillStyle = '#aab6d6'; g.textAlign = 'left'; g.fillText('0 ms', padL, h - 12);
+    g.fillStyle = '#aab6d6'; g.textAlign = 'left'; g.fillText('0 ms', padL, h - 12); g.textAlign = 'right'; g.fillText('level', padL - 8, padT - 20); g.textAlign = 'left';
     g.textAlign = 'right'; g.fillText(result.periodMs.toFixed(2) + ' ms (one full wave)', w - padR, h - 12);
     // soft fill between the wave and the zero line
     const grad = g.createLinearGradient(0, padT, 0, h - padB);
@@ -195,12 +195,21 @@
       g.fillStyle = '#6ee7c8'; g.beginPath(); g.arc(x, yq, 3.5, 0, 7); g.fill();
       g.fillStyle = '#fff'; g.strokeStyle = '#ffb454'; g.lineWidth = 2.5;
       g.beginPath(); g.arc(x, y, 5.5, 0, 7); g.fill(); g.stroke();
-      if (n <= 16) {
-        g.fillStyle = chipColor(r.level, L); g.font = 'bold 12px Consolas, monospace';
-        g.fillText(r.binary, Math.min(Math.max(x, padL + 14), w - padR - 14), y >= Y(0) - 1 ? y - 12 : y + 20);
-        g.font = '12px "Trebuchet MS", sans-serif';
-      }
     });
+    // binary labels in small pills, placed away from the wave and the drop line
+    if (n <= 16) {
+      g.font = 'bold 12px Consolas, monospace';
+      result.rows.forEach((r, i) => {
+        const x = X(i / n), y = Y(r.height), yq = Y(qv(r.level));
+        const below = yq < y - 1 ? true : yq > y + 1 ? false : r.height < 0;
+        const tw = g.measureText(r.binary).width + 12;
+        const lx = Math.min(Math.max(x, padL + tw / 2), w - padR - tw / 2), ly = below ? y + 26 : y - 26;
+        g.fillStyle = 'rgba(12,18,34,.88)'; g.strokeStyle = chipColor(r.level, L); g.lineWidth = 1.5;
+        g.beginPath(); (g.roundRect || g.rect).call(g, lx - tw / 2, ly - 11, tw, 22, 6); g.fill(); g.stroke();
+        g.fillStyle = chipColor(r.level, L); g.fillText(r.binary, lx, ly + 4);
+      });
+      g.font = '12px "Trebuchet MS", sans-serif';
+    }
   }
 
   function chipColor(level, levels) { return `hsl(${Math.round(level / Math.max(levels - 1, 1) * 280 + 160) % 360} 80% 72%)`; }
