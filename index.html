@@ -112,10 +112,10 @@
   <section class="panel qa">
     <h2>Explain It</h2>
     <p><strong>1. How does the app change a sound wave into binary? Name the three steps.</strong><br>
-      Step 1: sample the wave's height at equal time intervals. Step 2: round each height to the nearest level. Step 3: write each level in binary using the chosen number of bits.</p>
+      Step 1: sample the wave's height at equal time intervals. Step 2: round each height to the nearest level, then Step 3: write each level in binary with the chosen number of bits.</p>
     <p><strong>2. Does 2 bits or 6 bits give more detail?</strong><br><span id="q2"></span></p>
     <p><strong>3. Which test has the longest wavelength?</strong><br>Test B has the longest wavelength because it has the lowest frequency (200 Hz). Wavelength = 343 ÷ frequency, so a higher frequency means a shorter wavelength.</p>
-    <p><strong>4. What was the hardest stage to build, and how did you fix it?</strong><br>The hardest part was handling invalid input. Empty fields became <code>0</code>, so they passed as numbers and gave no warning. I fixed it by checking for blank values first, then checking each range one by one. Now every bad input shows a clear message instead of crashing.</p>
+    <p><strong>4. What was the hardest stage to build, and how did you fix it?</strong><br>The hardest part was handling invalid input, because empty fields turned into 0 and passed as numbers with no warning. I fixed it by checking for blank values first, then checking each range one by one, so every bad input now shows a clear message.</p>
   </section>
 </main>
 <script>
@@ -285,7 +285,7 @@
 
   // Explain It, question 2: real Test A results at 2 bits and 6 bits.
   const low = calculateWave(440, 0.8, 8, 2), high = calculateWave(440, 0.8, 8, 6);
-  $('q2').textContent = `6 bits gives more detail. Test A at 2 bits has only ${low.levels} levels (${low.binary}), so many samples share the same value. At 6 bits there are ${high.levels} levels (${high.binary}), so the binary follows the wave's height much more closely, but it needs more bits (${high.totalBits} instead of ${low.totalBits}).`;
+  $('q2').textContent = `6 bits gives more detail because it has ${high.levels} levels instead of ${low.levels}, so the binary follows the wave's height more closely (Test A at 2 bits: ${low.binary}; at 6 bits: ${high.binary}). The trade-off is more data: ${high.totalBits} bits instead of ${low.totalBits}.`;
 
   convert();
 </script>
